@@ -102,13 +102,6 @@
   const restartBtn = document.getElementById('restartBtn');
   const menuBtn = document.getElementById('menuBtn');
 
-  const chickenFramesSrc = [
-    // dva jednoduché kuřecí obrázky (malé bílé čtverečky jako placeholder)
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAL0lEQVR4nO3BMQEAAAgDoK1/aMNoYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD4HlSAAAbW/8rwAAAABJRU5ErkJggg==',
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAL0lEQVR4nO3BMQEAAAgDoK1/aMNoYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD4HlSAAAbW/8rwAAAABJRU5ErkJggg=='
-  ];
-
-  let chickenFrames = [];
   let currentTrack = null;
   let player;
   let obstacles = [];
@@ -127,35 +120,16 @@
     { name: 'Pláž', bgColor: '#00bcd4', speedStart: 5.2 },
   ];
 
-  function loadImages(sources, callback) {
-    let loaded = 0;
-    let imgs = [];
-    sources.forEach((src, i) => {
-      imgs[i] = new Image();
-      imgs[i].src = src;
-      imgs[i].onload = () => {
-        loaded++;
-        if (loaded === sources.length) {
-          callback(imgs);
-        }
-      }
-      imgs[i].onerror = () => alert("Nepodařilo se načíst obrázek kuřete!");
-    });
-  }
-
   function createPlayer() {
     return {
       x: 50,
       y: 220,
-      width: 64,
-      height: 64,
+      width: 50,
+      height: 50,
       vy: 0,
       gravity: 0.8,
       jumpForce: -15,
       grounded: true,
-      frame: 0,
-      frameTimer: 0,
-      frameInterval: 10,
     };
   }
 
@@ -220,12 +194,6 @@
         showGameOver();
       }
     });
-
-    player.frameTimer++;
-    if (player.frameTimer >= player.frameInterval) {
-      player.frame = (player.frame + 1) % chickenFrames.length;
-      player.frameTimer = 0;
-    }
   }
 
   function draw() {
@@ -236,13 +204,18 @@
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
+    // Nakreslíme překážky - červené obdélníky
     ctx.fillStyle = '#b22222';
     obstacles.forEach(obs => {
       ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
     });
 
-    const frameImg = chickenFrames[player.frame];
-    ctx.drawImage(frameImg, player.x, player.y, player.width, player.height);
+    // Nakreslíme kuře - žlutý obdélník s červeným hřebenem
+    ctx.fillStyle = 'yellow';
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+    // hřeben
+    ctx.fillStyle = 'red';
+    ctx.fillRect(player.x + player.width - 15, player.y, 10, 15);
   }
 
   function gameLoop() {
@@ -293,10 +266,6 @@
     menu.style.display = 'block';
   });
 
-  loadImages(chickenFramesSrc, imgs => {
-    chickenFrames = imgs;
-    // Po načtení obrázků necháme jen menu a čekáme na klik
-  });
 </script>
 
 </body>
