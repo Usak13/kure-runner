@@ -2,293 +2,224 @@
 <html lang="cs">
 <head>
 <meta charset="UTF-8" />
-<title>Skákací kuře s obrázky</title>
+<title>Kuře skáče v horách</title>
 <style>
   body {
-    margin: 0;
-    background: #87ceeb;
-    font-family: Arial, sans-serif;
+    margin: 0; 
+    font-family: Arial, sans-serif; 
+    background: #87ceeb; 
     text-align: center;
     user-select: none;
-    overflow: hidden;
-  }
-  #gameCanvas {
-    display: none;
-    margin: 20px auto;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-  }
-  #score {
-    font-size: 24px;
-    color: #222;
-    margin-top: 10px;
-    font-weight: bold;
-    text-shadow: 1px 1px 2px white;
-    display: none;
   }
   #menu {
-    margin-top: 40px;
+    padding: 30px;
   }
-  .track-btn {
-    background: #28a745;
-    color: white;
-    border: none;
-    margin: 5px;
-    padding: 12px 20px;
-    font-size: 18px;
-    cursor: pointer;
-    border-radius: 6px;
-    transition: background 0.3s;
-  }
-  .track-btn:hover {
-    background: #218838;
-  }
-  #gameOverScreen {
-    position: fixed;
-    top:0; left:0; right:0; bottom:0;
-    background: rgba(0,0,0,0.7);
-    color: white;
-    font-size: 28px;
-    display: none;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    z-index: 10;
-  }
-  #gameOverScreen button {
-    margin-top: 20px;
-    padding: 12px 25px;
+  button {
     font-size: 20px;
+    padding: 12px 25px;
+    margin: 10px;
     cursor: pointer;
     border: none;
-    border-radius: 6px;
-    background: #007bff;
+    border-radius: 8px;
+    background-color: #4CAF50;
     color: white;
+    transition: background-color 0.3s;
   }
-  #gameOverScreen button:hover {
-    background: #0056b3;
+  button:hover {
+    background-color: #45a049;
+  }
+  canvas {
+    display: block;
+    margin: 0 auto;
+    background: linear-gradient(to top, #4a90e2 0%, #87ceeb 100%);
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
   }
 </style>
 </head>
 <body>
 
 <div id="menu">
-  <h1>Vyber trať</h1>
-  <button class="track-btn" data-track="0">1. Hory (Alpy)</button>
-  <button class="track-btn" data-track="1">2. Město</button>
-  <button class="track-btn" data-track="2">3. Les</button>
-  <button class="track-btn" data-track="3">4. Poušť</button>
-  <button class="track-btn" data-track="4">5. Jeskyně</button>
-  <button class="track-btn" data-track="5">6. Pláž</button>
+  <h1>Kuře - Vyber trať</h1>
+  <button id="startMountain">1. Hory</button>
+  <button id="startCity">2. Město</button>
 </div>
 
-<canvas id="gameCanvas" width="600" height="300"></canvas>
-<div id="score">Skóre: 0</div>
-
-<div id="gameOverScreen">
-  <div id="gameOverText"></div>
-  <button id="restartBtn">Hrát znovu</button>
-  <button id="menuBtn">Zpět do menu</button>
-</div>
+<canvas id="gameCanvas" width="700" height="350" style="display:none;"></canvas>
 
 <script>
-  const canvas = document.getElementById('gameCanvas');
-  const ctx = canvas.getContext('2d');
-  const menu = document.getElementById('menu');
-  const scoreDisplay = document.getElementById('score');
-  const gameOverScreen = document.getElementById('gameOverScreen');
-  const gameOverText = document.getElementById('gameOverText');
-  const restartBtn = document.getElementById('restartBtn');
-  const menuBtn = document.getElementById('menuBtn');
+// --- Nastavení ---
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const menu = document.getElementById('menu');
 
-  let currentTrack = null;
-  let player;
-  let obstacles = [];
-  let frameCounter = 0;
-  let score = 0;
-  let gameSpeed = 5;
-  let gameOver = false;
-  let animationFrameId;
+const GRAVITY = 0.8;
+const JUMP_FORCE = -15;
 
-  // Obrázky
-  const chickenImg = new Image();
-  chickenImg.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Chicken_icon.svg/120px-Chicken_icon.svg.png';
+let gameRunning = false;
+let obstacles = [];
+let score = 0;
+let speed = 5;
 
-  const mountainBgImg = new Image();
-  mountainBgImg.src = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80';
+const player = {
+  x: 50,
+  y: 250,
+  width: 50,
+  height: 50,
+  vy: 0,
+  grounded: false,
+  img: new Image()
+};
+player.img.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Chicken_icon.svg/120px-Chicken_icon.svg.png';
 
-  const tracks = [
-    { name: 'Hory', bgImage: mountainBgImg, speedStart: 5 },
-    { name: 'Město', bgImage: null, bgColor: '#a0a0a0', speedStart: 6 },
-    { name: 'Les', bgImage: null, bgColor: '#2e7d32', speedStart: 4 },
-    { name: 'Poušť', bgImage: null, bgColor: '#f4d35e', speedStart: 5.5 },
-    { name: 'Jeskyně', bgImage: null, bgColor: '#4a4a4a', speedStart: 4.5 },
-    { name: 'Pláž', bgImage: null, bgColor: '#00bcd4', speedStart: 5.2 },
-  ];
+// Pozadí obrázky
+const bgMountain = new Image();
+bgMountain.src = 'https://cdn.pixabay.com/photo/2016/04/01/11/58/mountains-1305366_1280.png';
 
-  function createPlayer() {
-    return {
-      x: 50,
-      y: 220,
-      width: 50,
-      height: 50,
-      vy: 0,
-      gravity: 0.8,
-      jumpForce: -15,
-      grounded: true,
-    };
+const bgCity = new Image();
+bgCity.src = 'https://cdn.pixabay.com/photo/2016/03/27/07/08/city-1284460_1280.png';
+
+// Vyber tratě
+let currentBackground = null;
+
+document.getElementById('startMountain').onclick = () => startGame('mountain');
+document.getElementById('startCity').onclick = () => startGame('city');
+
+function startGame(track) {
+  menu.style.display = 'none';
+  canvas.style.display = 'block';
+  gameRunning = true;
+  score = 0;
+  speed = 5;
+  obstacles = [];
+  player.y = 250;
+  player.vy = 0;
+  player.grounded = false;
+
+  currentBackground = (track === 'mountain') ? bgMountain : bgCity;
+
+  createObstacles();
+  gameLoop();
+}
+
+// Vytvoření překážek
+function createObstacles() {
+  obstacles = [];
+  let posX = 600;
+  for(let i = 0; i < 10; i++) {
+    let height = 40 + Math.random()*60;
+    obstacles.push({ x: posX, y: 300 - height, width: 30, height: height });
+    posX += 200;
+  }
+}
+
+// Skok
+function jump() {
+  if (player.grounded) {
+    player.vy = JUMP_FORCE;
+    player.grounded = false;
+  }
+}
+
+// Ovládání
+document.addEventListener('keydown', e => {
+  if(e.code === 'Space' && gameRunning) jump();
+});
+document.addEventListener('click', () => {
+  if(gameRunning) jump();
+});
+
+// Detekce kolize
+function checkCollision(rect1, rect2) {
+  return !(rect2.x > rect1.x + rect1.width || 
+           rect2.x + rect2.width < rect1.x || 
+           rect2.y > rect1.y + rect1.height ||
+           rect2.y + rect2.height < rect1.y);
+}
+
+// Herní cyklus
+function gameLoop() {
+  if(!gameRunning) return;
+
+  // Pohyb hráče
+  player.vy += GRAVITY;
+  player.y += player.vy;
+
+  if(player.y + player.height >= 300){
+    player.y = 300 - player.height;
+    player.vy = 0;
+    player.grounded = true;
   }
 
-  function createObstacle() {
-    const height = 50;
-    const width = 30;
-    const y = 220;
-    obstacles.push({ x: canvas.width, y, width, height });
+  // Posun překážek
+  for(let obs of obstacles){
+    obs.x -= speed;
   }
 
-  function jump() {
-    if (player.grounded && !gameOver) {
-      player.vy = player.jumpForce;
-      player.grounded = false;
+  // Odstranění překážek, které zmizely
+  if(obstacles.length && obstacles[0].x + obstacles[0].width < 0){
+    obstacles.shift();
+    // Přidat novou překážku na konec
+    let lastX = obstacles.length ? obstacles[obstacles.length-1].x : 600;
+    let height = 40 + Math.random()*60;
+    obstacles.push({ x: lastX + 200, y: 300 - height, width: 30, height: height });
+    score++;
+    if(score % 5 === 0){
+      speed += 0.5; // Zrychlení každých 5 bodů
     }
   }
 
-  document.addEventListener('keydown', e => {
-    if ((e.code === 'Space' || e.code === 'ArrowUp') && !gameOver) jump();
-  });
-  document.addEventListener('click', () => {
-    if (!gameOver) jump();
-  });
-
-  function update() {
-    if (gameOver) return;
-
-    frameCounter++;
-
-    if (frameCounter % 90 === 0) {
-      createObstacle();
-      if (gameSpeed < 12) gameSpeed += 0.2;
-    }
-
-    obstacles.forEach(obs => {
-      obs.x -= gameSpeed;
-    });
-
-    while (obstacles.length && obstacles[0].x + obstacles[0].width < 0) {
-      obstacles.shift();
-      score++;
-      scoreDisplay.textContent = 'Skóre: ' + score;
-    }
-
-    player.vy += player.gravity;
-    player.y += player.vy;
-    if (player.y > 220) {
-      player.y = 220;
-      player.vy = 0;
-      player.grounded = true;
-    }
-
-    obstacles.forEach(obs => {
-      if (
-        player.x < obs.x + obs.width &&
-        player.x + player.width > obs.x &&
-        player.y < obs.y + obs.height &&
-        player.y + player.height > obs.y
-      ) {
-        gameOver = true;
-        cancelAnimationFrame(animationFrameId);
-        showGameOver();
-      }
-    });
-  }
-
-  function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Pozadí
-    if (currentTrack) {
-      if (currentTrack.bgImage && currentTrack.bgImage.complete) {
-        ctx.drawImage(currentTrack.bgImage, 0, 0, canvas.width, canvas.height);
-      } else if (currentTrack.bgColor) {
-        ctx.fillStyle = currentTrack.bgColor;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      } else {
-        ctx.fillStyle = '#87ceeb';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
-    }
-
-    // Překážky
-    ctx.fillStyle = '#b22222';
-    obstacles.forEach(obs => {
-      ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-    });
-
-    // Kuře
-    if (chickenImg.complete) {
-      ctx.drawImage(chickenImg, player.x, player.y, player.width, player.height);
-    } else {
-      ctx.fillStyle = 'yellow';
-      ctx.fillRect(player.x, player.y, player.width, player.height);
+  // Kolize
+  for(let obs of obstacles){
+    if(checkCollision(player, obs)){
+      alert(`Konec hry! Tvoje skóre: ${score}`);
+      gameRunning = false;
+      menu.style.display = 'block';
+      canvas.style.display = 'none';
+      return;
     }
   }
 
-  function gameLoop() {
-    update();
-    draw();
-    if (!gameOver) animationFrameId = requestAnimationFrame(gameLoop);
+  // Kreslení
+  draw();
+
+  // Další frame
+  requestAnimationFrame(gameLoop);
+}
+
+// Kreslení
+function draw() {
+  // Pozadí - pokud je načtené, vykresli, jinak modré nebe
+  if(currentBackground && currentBackground.complete){
+    ctx.drawImage(currentBackground, 0, 0, canvas.width, canvas.height);
+  } else {
+    ctx.fillStyle = '#87ceeb';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 
-  function showGameOver() {
-    gameOverText.textContent = `Konec hry! Skóre: ${score}`;
-    gameOverScreen.style.display = 'flex';
+  // Zem
+  ctx.fillStyle = '#3B7A57'; 
+  ctx.fillRect(0, 300, canvas.width, 50);
+
+  // Překážky
+  ctx.fillStyle = '#8B4513';
+  for(let obs of obstacles){
+    ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
   }
 
-  function startGame(trackIndex) {
-    currentTrack = tracks[trackIndex];
-    player = createPlayer();
-    obstacles = [];
-    frameCounter = 0;
-    score = 0;
-    gameSpeed = currentTrack.speedStart;
-    gameOver = false;
-
-    scoreDisplay.textContent = 'Skóre: 0';
-
-    menu.style.display = 'none';
-    gameOverScreen.style.display = 'none';
-    canvas.style.display = 'block';
-    scoreDisplay.style.display = 'block';
-
-    // Počkej, až se kuře i pozadí načtou, pak spustíme hru
-    Promise.all([
-      new Promise(res => { chickenImg.complete ? res() : chickenImg.onload = res; }),
-      new Promise(res => {
-        if (!currentTrack.bgImage) return res();
-        currentTrack.bgImage.complete ? res() : currentTrack.bgImage.onload = res;
-      }),
-    ]).then(() => {
-      gameLoop();
-    });
+  // Kuře
+  if(player.img.complete){
+    ctx.drawImage(player.img, player.x, player.y, player.width, player.height);
+  } else {
+    ctx.fillStyle = 'yellow';
+    ctx.fillRect(player.x, player.y, player.width, player.height);
   }
 
-  document.querySelectorAll('.track-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const trackIndex = Number(btn.getAttribute('data-track'));
-      startGame(trackIndex);
-    });
-  });
-
-  restartBtn.addEventListener('click', () => {
-    if (currentTrack !== null) startGame(tracks.indexOf(currentTrack));
-  });
-
-  menuBtn.addEventListener('click', () => {
-    gameOverScreen.style.display = 'none';
-    canvas.style.display = 'none';
-    scoreDisplay.style.display = 'none';
-    menu.style.display = 'block';
-  });
+  // Skóre
+  ctx.fillStyle = 'black';
+  ctx.font = '20px Arial';
+  ctx.fillText(`Skóre: ${score}`, 10, 30);
+}
 </script>
 
 </body>
