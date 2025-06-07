@@ -2,7 +2,7 @@
 <html lang="cs">
 <head>
 <meta charset="UTF-8" />
-<title>Kuře skáče v horách</title>
+<title>Kuře skáče</title>
 <style>
   body {
     margin: 0; 
@@ -23,15 +23,14 @@
     border-radius: 8px;
     background-color: #4CAF50;
     color: white;
-    transition: background-color 0.3s;
   }
   button:hover {
     background-color: #45a049;
   }
   canvas {
     display: block;
-    margin: 0 auto;
-    background: linear-gradient(to top, #4a90e2 0%, #87ceeb 100%);
+    margin: 20px auto;
+    background: #a0d8f7;
     border-radius: 15px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.3);
   }
@@ -48,7 +47,6 @@
 <canvas id="gameCanvas" width="700" height="350" style="display:none;"></canvas>
 
 <script>
-// --- Nastavení ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const menu = document.getElementById('menu');
@@ -72,18 +70,15 @@ const player = {
 };
 player.img.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Chicken_icon.svg/120px-Chicken_icon.svg.png';
 
-// Obrázek překážky
 const obstacleImg = new Image();
 obstacleImg.src = 'https://cdn.pixabay.com/photo/2012/04/14/16/00/rock-34400_1280.png';
 
-// Pozadí obrázky
 const bgMountain = new Image();
 bgMountain.src = 'https://cdn.pixabay.com/photo/2016/04/01/11/58/mountains-1305366_1280.png';
 
 const bgCity = new Image();
 bgCity.src = 'https://cdn.pixabay.com/photo/2016/03/27/07/08/city-1284460_1280.png';
 
-// Vyber tratě
 let currentBackground = null;
 
 document.getElementById('startMountain').onclick = () => startGame('mountain');
@@ -106,7 +101,6 @@ function startGame(track) {
   gameLoop();
 }
 
-// Vytvoření překážek
 function createObstacles() {
   obstacles = [];
   let posX = 600;
@@ -117,7 +111,6 @@ function createObstacles() {
   }
 }
 
-// Skok
 function jump() {
   if (player.grounded) {
     player.vy = JUMP_FORCE;
@@ -125,7 +118,6 @@ function jump() {
   }
 }
 
-// Ovládání
 document.addEventListener('keydown', e => {
   if(e.code === 'Space' && gameRunning) jump();
 });
@@ -133,7 +125,6 @@ document.addEventListener('click', () => {
   if(gameRunning) jump();
 });
 
-// Detekce kolize
 function checkCollision(rect1, rect2) {
   return !(rect2.x > rect1.x + rect1.width || 
            rect2.x + rect2.width < rect1.x || 
@@ -141,11 +132,9 @@ function checkCollision(rect1, rect2) {
            rect2.y + rect2.height < rect1.y);
 }
 
-// Herní cyklus
 function gameLoop() {
   if(!gameRunning) return;
 
-  // Pohyb hráče
   player.vy += GRAVITY;
   player.y += player.vy;
 
@@ -155,25 +144,21 @@ function gameLoop() {
     player.grounded = true;
   }
 
-  // Posun překážek
   for(let obs of obstacles){
     obs.x -= speed;
   }
 
-  // Odstranění překážek, které zmizely
   if(obstacles.length && obstacles[0].x + obstacles[0].width < 0){
     obstacles.shift();
-    // Přidat novou překážku na konec
     let lastX = obstacles.length ? obstacles[obstacles.length-1].x : 600;
     let height = 40 + Math.random()*60;
     obstacles.push({ x: lastX + 200, y: 300 - height, width: 30, height: height });
     score++;
     if(score % 5 === 0){
-      speed += 0.5; // Zrychlení každých 5 bodů
+      speed += 0.5;
     }
   }
 
-  // Kolize
   for(let obs of obstacles){
     if(checkCollision(player, obs)){
       alert(`Konec hry! Tvoje skóre: ${score}`);
@@ -184,16 +169,11 @@ function gameLoop() {
     }
   }
 
-  // Kreslení
   draw();
-
-  // Další frame
   requestAnimationFrame(gameLoop);
 }
 
-// Kreslení
 function draw() {
-  // Pozadí - pokud je načtené, vykresli, jinak modré nebe
   if(currentBackground && currentBackground.complete){
     ctx.drawImage(currentBackground, 0, 0, canvas.width, canvas.height);
   } else {
@@ -201,11 +181,9 @@ function draw() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 
-  // Zem
   ctx.fillStyle = '#3B7A57'; 
   ctx.fillRect(0, 300, canvas.width, 50);
 
-  // Překážky s obrázky
   for(let obs of obstacles){
     if(obstacleImg.complete){
       ctx.drawImage(obstacleImg, obs.x, obs.y - 10, obs.width + 20, obs.height + 20);
@@ -215,7 +193,6 @@ function draw() {
     }
   }
 
-  // Kuře hráč
   if(player.img.complete){
     ctx.drawImage(player.img, player.x, player.y, player.width, player.height);
   } else {
@@ -223,7 +200,6 @@ function draw() {
     ctx.fillRect(player.x, player.y, player.width, player.height);
   }
 
-  // Skóre
   ctx.fillStyle = 'black';
   ctx.font = '20px Arial';
   ctx.fillText(`Skóre: ${score}`, 10, 30);
