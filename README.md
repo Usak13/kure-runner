@@ -2,11 +2,11 @@
 <html lang="cs">
 <head>
   <meta charset="UTF-8" />
-  <title>Skákací kuře</title>
+  <title>Skákací kuře s animací a zvuky</title>
   <style>
-    body { margin: 0; overflow: hidden; background: #87ceeb; font-family: Arial, sans-serif; }
-    #gameCanvas { background: #3a6; display: block; margin: 0 auto; }
-    #score { color: #333; font-size: 24px; text-align: center; margin-top: 10px; }
+    body { margin: 0; background: #87ceeb; font-family: Arial, sans-serif; text-align: center; }
+    #gameCanvas { background: #3a6; display: block; margin: 20px auto; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+    #score { font-size: 24px; color: #222; margin-top: 10px; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -17,40 +17,50 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    // Kuře jako obrázek
-    const chicken = new Image();
-    chicken.src = 'https://i.imgur.com/dw7aQPw.png'; // Jednoduchý obrázek kuřete (můžeš nahradit vlastním)
+    // Sprite sheet kuřete (4 snímky chůze vedle sebe, 64x64 px každý)
+    const chickenSprite = new Image();
+    chickenSprite.src = 'https://i.imgur.com/CSvEFAz.png';
+
+    // Zvuky
+    const jumpSound = new Audio('https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg');
+    const landSound = new Audio('https://actions.google.com/sounds/v1/impacts/wood_thud.ogg');
+    const scoreSound = new Audio('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg');
 
     // Hráč (kuře)
     const player = {
       x: 50,
       y: 220,
-      width: 50,
-      height: 50,
+      width: 64,
+      height: 64,
       vy: 0,
       gravity: 0.8,
       jumpForce: -15,
       grounded: false,
+      frame: 0,
+      frameCount: 4,
+      frameTimer: 0,
+      frameInterval: 10
     };
 
     // Překážky
     const obstacles = [];
     const obstacleWidth = 30;
     let gameSpeed = 5;
-    let frameCount = 0;
+    let frameCounter = 0;
     let score = 0;
     let gameOver = false;
 
-    // Skákání na mezerník / kliknutí
+    // Skok - klávesnice a kliknutí
     document.addEventListener('keydown', e => {
-      if (e.code === 'Space' || e.code === 'ArrowUp') jump();
+      if ((e.code === 'Space' || e.code === 'ArrowUp') && !gameOver) jump();
     });
-    document.addEventListener('click', jump);
+    document.addEventListener('click', () => { if (!gameOver) jump(); });
 
     function jump() {
-      if (player.grounded && !gameOver) {
+      if (player.grounded) {
         player.vy = player.jumpForce;
         player.grounded = false;
+        jumpSound.play();
       }
     }
 
@@ -62,21 +72,20 @@
     function update() {
       if (gameOver) return;
 
-      frameCount++;
-      if (frameCount % 90 === 0) {
+      frameCounter++;
+      if (frameCounter % 90 === 0) {
         createObstacle();
-        if (gameSpeed < 12) gameSpeed += 0.2; // postupně zrychluj
+        if (gameSpeed < 12) gameSpeed += 0.2;
       }
 
       // Pohyb překážek
-      obstacles.forEach(obs => {
-        obs.x -= gameSpeed;
-      });
+      obstacles.forEach(obs => { obs.x -= gameSpeed; });
 
-      // Odstranění překážek mimo obrazovku
+      // Odstranění překážek mimo obrazovku a zvýšení skóre
       while (obstacles.length && obstacles[0].x + obstacleWidth < 0) {
         obstacles.shift();
         score++;
+        scoreSound.play();
         document.getElementById('score').textContent = 'Skóre: ' + score;
       }
 
@@ -86,12 +95,13 @@
 
       // Podlaha
       if (player.y > 220) {
+        if (!player.grounded) landSound.play();
         player.y = 220;
         player.vy = 0;
         player.grounded = true;
       }
 
-      // Kolize s překážkou
+      // Kolize s překážkami
       obstacles.forEach(obs => {
         if (
           player.x < obs.x + obs.width &&
@@ -104,10 +114,17 @@
           location.reload();
         }
       });
+
+      // Animace kuřete (chodící frames)
+      player.frameTimer++;
+      if (player.frameTimer >= player.frameInterval) {
+        player.frame = (player.frame + 1) % player.frameCount;
+        player.frameTimer = 0;
+      }
     }
 
     function draw() {
-      // Pozadí
+      // Pozadí oblohy
       ctx.fillStyle = '#87ceeb';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -115,8 +132,12 @@
       ctx.fillStyle = '#654321';
       ctx.fillRect(0, 270, canvas.width, 30);
 
-      // Kuře
-      ctx.drawImage(chicken, player.x, player.y, player.width, player.height);
+      // Kuře (sprite animace)
+      ctx.drawImage(
+        chickenSprite,
+        player.frame * player.width, 0, player.width, player.height,
+        player.x, player.y, player.width, player.height
+      );
 
       // Překážky
       ctx.fillStyle = '#d44';
@@ -131,7 +152,7 @@
       requestAnimationFrame(gameLoop);
     }
 
-    chicken.onload = () => {
+    chickenSprite.onload = () => {
       gameLoop();
     };
   </script>
