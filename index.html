@@ -71,6 +71,14 @@ chickenImg.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Chic
 const obstacleImg = new Image();
 obstacleImg.src = 'https://cdn.pixabay.com/photo/2012/04/14/16/00/rock-34400_1280.png';
 
+let chickenLoaded = false;
+let obstacleLoaded = false;
+
+chickenImg.onload = () => { chickenLoaded = true; }
+chickenImg.onerror = () => { chickenLoaded = false; }
+obstacleImg.onload = () => { obstacleLoaded = true; }
+obstacleImg.onerror = () => { obstacleLoaded = false; }
+
 function startGame() {
   obstacles = [];
   score = 0;
@@ -157,7 +165,7 @@ function draw(){
   ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
 
   // Player (kuře)
-  if(chickenImg.complete){
+  if(chickenLoaded){
     ctx.drawImage(chickenImg, player.x, player.y, player.width, player.height);
   } else {
     ctx.fillStyle = 'yellow';
@@ -166,7 +174,7 @@ function draw(){
 
   // Obstacles
   for(let obs of obstacles){
-    if(obstacleImg.complete){
+    if(obstacleLoaded){
       ctx.drawImage(obstacleImg, obs.x, obs.y - 10, obs.width + 20, obs.height + 20);
     } else {
       ctx.fillStyle = 'brown';
