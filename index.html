@@ -1,86 +1,155 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-  <meta charset="UTF-8" />
-  <title>Skákací kuře animace + efekty</title>
-  <style>
-    body {
-      margin: 0;
-      background: #87ceeb;
-      font-family: Arial, sans-serif;
-      text-align: center;
-      user-select: none;
-      overflow: hidden;
-    }
-    #gameCanvas {
-      display: block;
-      margin: 20px auto;
-      background: #3a6;
-      border-radius: 10px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-    }
-    #score {
-      font-size: 24px;
-      color: #222;
-      margin-top: 10px;
-      font-weight: bold;
-      text-shadow: 1px 1px 2px white;
-    }
-  </style>
+<meta charset="UTF-8" />
+<title>Skákací kuře - více tratí</title>
+<style>
+  body {
+    margin: 0;
+    background: #87ceeb;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    user-select: none;
+    overflow: hidden;
+  }
+  #gameCanvas {
+    display: block;
+    margin: 20px auto;
+    background: #3a6;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  }
+  #score {
+    font-size: 24px;
+    color: #222;
+    margin-top: 10px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px white;
+  }
+  #menu {
+    margin-top: 40px;
+  }
+  .track-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    margin: 5px;
+    padding: 12px 20px;
+    font-size: 18px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.3s;
+  }
+  .track-btn:hover {
+    background: #218838;
+  }
+  #gameOverScreen {
+    position: fixed;
+    top:0; left:0; right:0; bottom:0;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    font-size: 28px;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+  }
+  #gameOverScreen button {
+    margin-top: 20px;
+    padding: 12px 25px;
+    font-size: 20px;
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    background: #007bff;
+    color: white;
+  }
+  #gameOverScreen button:hover {
+    background: #0056b3;
+  }
+</style>
 </head>
 <body>
-  <canvas id="gameCanvas" width="600" height="300"></canvas>
-  <div id="score">Skóre: 0</div>
+
+<div id="menu">
+  <h1>Vyber trať</h1>
+  <button class="track-btn" data-track="0">1. Hory</button>
+  <button class="track-btn" data-track="1">2. Město</button>
+  <button class="track-btn" data-track="2">3. Les</button>
+  <button class="track-btn" data-track="3">4. Poušť</button>
+  <button class="track-btn" data-track="4">5. Jeskyně</button>
+  <button class="track-btn" data-track="5">6. Pláž</button>
+</div>
+
+<canvas id="gameCanvas" width="600" height="300" style="display:none;"></canvas>
+<div id="score" style="display:none;">Skóre: 0</div>
+
+<div id="gameOverScreen" style="display:none;">
+  <div id="gameOverText"></div>
+  <button id="restartBtn">Hrát znovu</button>
+  <button id="menuBtn">Zpět do menu</button>
+</div>
 
 <script>
   const canvas = document.getElementById('gameCanvas');
   const ctx = canvas.getContext('2d');
+  const menu = document.getElementById('menu');
+  const scoreDisplay = document.getElementById('score');
+  const gameOverScreen = document.getElementById('gameOverScreen');
+  const gameOverText = document.getElementById('gameOverText');
+  const restartBtn = document.getElementById('restartBtn');
+  const menuBtn = document.getElementById('menuBtn');
 
-  // --- POZADÍ (parallax) ---
-  const backgroundLayers = [
-    { img: new Image(), x: 0, speed: 0.2 }, // mraky
-    { img: new Image(), x: 0, speed: 0.5 }, // hory
-    { img: new Image(), x: 0, speed: 1 },   // tráva/podlaha
+  // Trať konfigurace - každá má jiné pozadí a rychlost
+  const tracks = [
+    { name: 'Hory', bgImages: ['https://i.imgur.com/2dzXhKw.png', 'https://i.imgur.com/R3FDe9F.png', 'https://i.imgur.com/HLz0vpp.png'], speedStart: 5 },
+    { name: 'Město', bgImages: ['https://i.imgur.com/2ghsO0A.png', 'https://i.imgur.com/n2MKd41.png', 'https://i.imgur.com/jY2bqNK.png'], speedStart: 6 },
+    { name: 'Les', bgImages: ['https://i.imgur.com/RNm2GjW.png', 'https://i.imgur.com/d41AXm3.png', 'https://i.imgur.com/xt7lpUi.png'], speedStart: 4 },
+    { name: 'Poušť', bgImages: ['https://i.imgur.com/H92nQzL.png', 'https://i.imgur.com/jx6puvJ.png', 'https://i.imgur.com/cGzDZ2f.png'], speedStart: 5.5 },
+    { name: 'Jeskyně', bgImages: ['https://i.imgur.com/UwR6Skg.png', 'https://i.imgur.com/9lXMFUj.png', 'https://i.imgur.com/mg38lpu.png'], speedStart: 4.5 },
+    { name: 'Pláž', bgImages: ['https://i.imgur.com/5tNmyvX.png', 'https://i.imgur.com/YHrcD3V.png', 'https://i.imgur.com/0z2j33N.png'], speedStart: 5.2 },
   ];
-  backgroundLayers[0].img.src = 'https://i.imgur.com/2dzXhKw.png'; // mraky
-  backgroundLayers[1].img.src = 'https://i.imgur.com/R3FDe9F.png'; // hory
-  backgroundLayers[2].img.src = 'https://i.imgur.com/HLz0vpp.png'; // tráva
 
-  // --- KUŘE (sprite sheet 4 snímky, 64x64) ---
-  const chickenSprite = new Image();
-  chickenSprite.src = 'https://i.imgur.com/CSvEFAz.png'; // Kuře 4 snímky chůze
-
-  // --- ZVUKY ---
-  const jumpSound = new Audio('https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg');
-  const landSound = new Audio('https://actions.google.com/sounds/v1/impacts/wood_thud.ogg');
-  const scoreSound = new Audio('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg');
-
-  // --- HRÁČ ---
-  const player = {
-    x: 50,
-    y: 220,
-    width: 64,
-    height: 64,
-    vy: 0,
-    gravity: 0.8,
-    jumpForce: -15,
-    grounded: false,
-    frame: 0,
-    frameCount: 4,
-    frameTimer: 0,
-    frameInterval: 10
-  };
-
-  // --- PŘEKÁŽKY ---
-  const obstacleTypes = ['lava', 'voda', 'kamen'];
-  const obstacles = [];
-  const obstacleWidth = 30;
+  // --- Global variables ---
+  let currentTrack = null;
+  let backgroundLayers = [];
+  let player;
+  let obstacles = [];
+  let particles = [];
   let gameSpeed = 5;
   let frameCounter = 0;
   let score = 0;
   let gameOver = false;
 
-  // --- ČÁSTICE PRAHU ---
+  // --- Images ---
+  const chickenSprite = new Image();
+  chickenSprite.src = 'https://i.imgur.com/CSvEFAz.png';
+
+  // Sounds
+  const jumpSound = new Audio('https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg');
+  const landSound = new Audio('https://actions.google.com/sounds/v1/impacts/wood_thud.ogg');
+  const scoreSound = new Audio('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg');
+
+  // Player object
+  function createPlayer() {
+    return {
+      x: 50,
+      y: 220,
+      width: 64,
+      height: 64,
+      vy: 0,
+      gravity: 0.8,
+      jumpForce: -15,
+      grounded: false,
+      frame: 0,
+      frameCount: 4,
+      frameTimer: 0,
+      frameInterval: 10
+    };
+  }
+
+  // Particle class
   class Particle {
     constructor(x, y, color) {
       this.x = x;
@@ -108,16 +177,42 @@
       ctx.restore();
     }
   }
-  const particles = [];
 
-  // --- OVLÁDÁNÍ ---
-  document.addEventListener('keydown', e => {
-    if ((e.code === 'Space' || e.code === 'ArrowUp') && !gameOver) jump();
-  });
-  document.addEventListener('click', () => { if (!gameOver) jump(); });
+  // Create background layers for chosen track
+  function createBackgroundLayers(track) {
+    return track.bgImages.map(imgSrc => {
+      const img = new Image();
+      img.src = imgSrc;
+      return { img, x: 0, speed: 0 };
+    });
+  }
 
+  // Set parallax speeds for backgrounds
+  function setParallaxSpeeds() {
+    if (backgroundLayers.length < 3) return;
+    backgroundLayers[0].speed = 0.2;
+    backgroundLayers[1].speed = 0.5;
+    backgroundLayers[2].speed = 1;
+  }
+
+  // Create an obstacle with random type
+  function createObstacle() {
+    const obstacleTypes = ['lava', 'voda', 'kamen'];
+    const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+    const y = 220;
+    obstacles.push({ x: canvas.width, y, width: 30, height: 50, type, frame: 0 });
+  }
+
+  // Spawn particles helper
+  function spawnParticles(x, y, color) {
+    for (let i = 0; i < 10; i++) {
+      particles.push(new Particle(x, y, color));
+    }
+  }
+
+  // Jump function
   function jump() {
-    if (player.grounded) {
+    if (player.grounded && !gameOver) {
       player.vy = player.jumpForce;
       player.grounded = false;
       jumpSound.play();
@@ -125,20 +220,15 @@
     }
   }
 
-  function spawnParticles(x, y, color) {
-    for(let i=0; i<10; i++) {
-      particles.push(new Particle(x, y, color));
-    }
-  }
+  // Event listeners
+  document.addEventListener('keydown', e => {
+    if ((e.code === 'Space' || e.code === 'ArrowUp') && !gameOver) jump();
+  });
+  document.addEventListener('click', () => {
+    if (!gameOver) jump();
+  });
 
-  // --- VYTVOŘENÍ PŘEKÁŽKY ---
-  function createObstacle() {
-    const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
-    const y = 220;
-    obstacles.push({ x: canvas.width, y, width: obstacleWidth, height: 50, type, frame: 0 });
-  }
-
-  // --- UPDATE ---
+  // Update game state
   function update() {
     if (gameOver) return;
 
@@ -148,32 +238,32 @@
       if (gameSpeed < 12) gameSpeed += 0.2;
     }
 
-    // Pohyb a animace překážek
+    // Move and animate obstacles
     obstacles.forEach(obs => {
       obs.x -= gameSpeed;
 
-      if(obs.type === 'lava') {
+      if (obs.type === 'lava') {
         obs.frame += 0.2;
-        if(obs.frame > 3) obs.frame = 0;
+        if (obs.frame > 3) obs.frame = 0;
       }
-      if(obs.type === 'voda') {
+      if (obs.type === 'voda') {
         obs.y = 220 + Math.sin(frameCounter * 0.1 + obs.x * 0.05) * 5;
       }
     });
 
-    // Odstranění překážek a skóre
-    while (obstacles.length && obstacles[0].x + obstacleWidth < 0) {
+    // Remove obstacles off screen and update score
+    while (obstacles.length && obstacles[0].x + 30 < 0) {
       obstacles.shift();
       score++;
       scoreSound.play();
-      document.getElementById('score').textContent = 'Skóre: ' + score;
+      scoreDisplay.textContent = 'Skóre: ' + score;
     }
 
-    // Gravitační pohyb hráče
+    // Player gravity and position
     player.vy += player.gravity;
     player.y += player.vy;
 
-    // Podlaha a přistání
+    // Floor and landing
     if (player.y > 220) {
       if (!player.grounded) {
         landSound.play();
@@ -184,7 +274,7 @@
       player.grounded = true;
     }
 
-    // Kolize
+    // Collision detection
     obstacles.forEach(obs => {
       if (
         player.x < obs.x + obs.width &&
@@ -193,26 +283,25 @@
         player.y + player.height > obs.y
       ) {
         gameOver = true;
-        alert('Konec hry! Skóre: ' + score);
-        location.reload();
+        showGameOver();
       }
     });
 
-    // Animace kuřete (chodící frames)
+    // Animate player walk cycle
     player.frameTimer++;
     if (player.frameTimer >= player.frameInterval) {
       player.frame = (player.frame + 1) % player.frameCount;
       player.frameTimer = 0;
     }
 
-    // Update částic
-    for(let i = particles.length -1; i >=0; i--) {
+    // Update particles
+    for (let i = particles.length - 1; i >= 0; i--) {
       particles[i].update();
-      if(particles[i].alpha <= 0) particles.splice(i,1);
+      if (particles[i].alpha <= 0) particles.splice(i, 1);
     }
   }
 
-  // --- VYKRESLOVÁNÍ ---
+  // Draw background with parallax
   function drawBackground() {
     backgroundLayers.forEach(layer => {
       layer.x -= layer.speed * gameSpeed;
@@ -223,23 +312,24 @@
     });
   }
 
+  // Draw obstacles
   function drawObstacles() {
     obstacles.forEach(obs => {
-      if(obs.type === 'lava') {
+      if (obs.type === 'lava') {
         const flicker = Math.floor(obs.frame) % 4;
         const colors = ['#d44', '#ff4500', '#b22222', '#ff6347'];
         ctx.fillStyle = colors[flicker];
         ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
         ctx.fillStyle = '#ffa500';
-        for(let i=0; i<5; i++) {
-          let bx = obs.x + Math.random()*obs.width;
-          let by = obs.y + Math.random()*obs.height;
+        for (let i = 0; i < 5; i++) {
+          let bx = obs.x + Math.random() * obs.width;
+          let by = obs.y + Math.random() * obs.height;
           ctx.fillRect(bx, by, 2, 2);
         }
-      } else if(obs.type === 'voda') {
+      } else if (obs.type === 'voda') {
         ctx.fillStyle = '#3399ff';
         ctx.beginPath();
-        ctx.ellipse(obs.x + obs.width/2, obs.y + obs.height/2, obs.width/2, obs.height/2 + 5 * Math.sin(frameCounter * 0.1), 0, 0, Math.PI*2);
+        ctx.ellipse(obs.x + obs.width / 2, obs.y + obs.height / 2, obs.width / 2, obs.height / 2 + 5 * Math.sin(frameCounter * 0.1), 0, 0, Math.PI * 2);
         ctx.fill();
       } else {
         ctx.fillStyle = '#777';
@@ -248,12 +338,13 @@
     });
   }
 
+  // Draw particles
   function drawParticles() {
     particles.forEach(p => p.draw(ctx));
   }
 
+  // Draw player with sprite animation
   function drawPlayer() {
-    // Animovaný sprite - 4 snímky vedle sebe, každý 64x64 px
     ctx.drawImage(
       chickenSprite,
       player.frame * player.width, 0, player.width, player.height,
@@ -261,6 +352,7 @@
     );
   }
 
+  // Draw everything
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawBackground();
@@ -269,23 +361,70 @@
     drawPlayer();
   }
 
+  // Game loop
   function gameLoop() {
     update();
     draw();
-    requestAnimationFrame(gameLoop);
+    if (!gameOver) requestAnimationFrame(gameLoop);
   }
 
-  // Po načtení obrázků začneme hru
-  let loadedImages = 0;
-  const totalImages = backgroundLayers.length + 1; // pozadí + kuře
-  backgroundLayers.forEach(layer => layer.img.onload = () => {
-    loadedImages++;
-    if (loadedImages === totalImages) gameLoop();
+  // Show game over screen
+  function showGameOver() {
+    gameOverText.textContent = `Konec hry! Skóre: ${score}`;
+    gameOverScreen.style.display = 'flex';
+  }
+
+  // Reset game variables and start playing
+  function startGame(trackIndex) {
+    currentTrack = tracks[trackIndex];
+    gameSpeed = currentTrack.speedStart;
+    score = 0;
+    frameCounter = 0;
+    gameOver = false;
+    obstacles = [];
+    particles = [];
+    player = createPlayer();
+
+    // Load background images
+    backgroundLayers = createBackgroundLayers(currentTrack);
+    setParallaxSpeeds();
+
+    // Show canvas and score, hide menu and game over
+    menu.style.display = 'none';
+    gameOverScreen.style.display = 'none';
+    canvas.style.display = 'block';
+    scoreDisplay.style.display = 'block';
+    scoreDisplay.textContent = 'Skóre: 0';
+
+    // Wait for images to load before starting loop
+    let loadedImages = 0;
+    const totalImages = backgroundLayers.length + 1;
+    backgroundLayers.forEach(layer => layer.img.onload = () => {
+      loadedImages++;
+      if (loadedImages === totalImages) gameLoop();
+    });
+    chickenSprite.onload = () => {
+      loadedImages++;
+      if (loadedImages === totalImages) gameLoop();
+    };
+  }
+
+  // Buttons event
+  document.querySelectorAll('.track-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      startGame(parseInt(btn.dataset.track));
+    });
   });
-  chickenSprite.onload = () => {
-    loadedImages++;
-    if (loadedImages === totalImages) gameLoop();
-  };
+  restartBtn.addEventListener('click', () => {
+    if(currentTrack !== null) startGame(tracks.indexOf(currentTrack));
+  });
+  menuBtn.addEventListener('click', () => {
+    gameOverScreen.style.display = 'none';
+    canvas.style.display = 'none';
+    scoreDisplay.style.display = 'none';
+    menu.style.display = 'block';
+  });
 </script>
+
 </body>
 </html>
