@@ -2,7 +2,7 @@
 <html lang="cs">
 <head>
 <meta charset="UTF-8" />
-<title>Skákací kuře</title>
+<title>Skákací kuře s obrázky</title>
 <style>
   body {
     margin: 0;
@@ -15,9 +15,10 @@
   #gameCanvas {
     display: none;
     margin: 20px auto;
-    background: #3a6;
     border-radius: 10px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    background: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80') no-repeat center bottom;
+    background-size: cover;
   }
   #score {
     font-size: 24px;
@@ -75,7 +76,7 @@
 
 <div id="menu">
   <h1>Vyber trať</h1>
-  <button class="track-btn" data-track="0">1. Hory</button>
+  <button class="track-btn" data-track="0">1. Hory (Alpy)</button>
   <button class="track-btn" data-track="1">2. Město</button>
   <button class="track-btn" data-track="2">3. Les</button>
   <button class="track-btn" data-track="3">4. Poušť</button>
@@ -111,8 +112,22 @@
   let gameOver = false;
   let animationFrameId;
 
+  // Kuře obrázek
+  const chickenImg = new Image();
+  chickenImg.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Chicken_icon.svg/120px-Chicken_icon.svg.png';
+
+  // Pozadí pro tratě (pouze Hory s obrázkem)
+  const trackBackgrounds = [
+    'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80', // Hory (Alpy)
+    '#a0a0a0', // Město - jednobarevné
+    '#2e7d32', // Les
+    '#f4d35e', // Poušť
+    '#4a4a4a', // Jeskyně
+    '#00bcd4', // Pláž
+  ];
+
   const tracks = [
-    { name: 'Hory', bgColor: '#7ec850', speedStart: 5 },
+    { name: 'Hory', bgColor: null, speedStart: 5 },
     { name: 'Město', bgColor: '#a0a0a0', speedStart: 6 },
     { name: 'Les', bgColor: '#2e7d32', speedStart: 4 },
     { name: 'Poušť', bgColor: '#f4d35e', speedStart: 5.5 },
@@ -199,23 +214,34 @@
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if(currentTrack) {
-      ctx.fillStyle = currentTrack.bgColor;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Pozadí - pokud hory, použij obrázek, jinak jednobarevné
+    if (currentTrack) {
+      if(currentTrack.bgColor === null){
+        // obrázek pozadí
+        let bg = new Image();
+        bg.src = trackBackgrounds[0];
+        ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+      } else {
+        ctx.fillStyle = currentTrack.bgColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
     }
 
-    // Nakreslíme překážky - červené obdélníky
+    // Překážky - červené obdélníky
     ctx.fillStyle = '#b22222';
     obstacles.forEach(obs => {
       ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
     });
 
-    // Nakreslíme kuře - žlutý obdélník s červeným hřebenem
-    ctx.fillStyle = 'yellow';
-    ctx.fillRect(player.x, player.y, player.width, player.height);
-    // hřeben
-    ctx.fillStyle = 'red';
-    ctx.fillRect(player.x + player.width - 15, player.y, 10, 15);
+    // Kuře - obrázek, pokud nahrán, jinak žlutý obdélník
+    if(chickenImg.complete){
+      ctx.drawImage(chickenImg, player.x, player.y, player.width, player.height);
+    } else {
+      ctx.fillStyle = 'yellow';
+      ctx.fillRect(player.x, player.y, player.width, player.height);
+      ctx.fillStyle = 'red';
+      ctx.fillRect(player.x + player.width - 15, player.y, 10, 15);
+    }
   }
 
   function gameLoop() {
