@@ -2,7 +2,7 @@
 <html lang="cs">
 <head>
 <meta charset="UTF-8" />
-<title>Skákací kuře - s funkčním menu</title>
+<title>Skákací kuře - opravená verze</title>
 <style>
   body {
     margin: 0;
@@ -101,12 +101,31 @@
   const restartBtn = document.getElementById('restartBtn');
   const menuBtn = document.getElementById('menuBtn');
 
-  // Base64 obrázky (velmi jednoduchý kuře sprite 2 snímky)
-  const chickenFrames = [];
-  chickenFrames[0] = new Image();
-  chickenFrames[0].src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAlklEQVR4nO3XQQrCMAwE0Pf//xW4QKnQhSuE3LhSXhLz2GT9IKI2YFDNti8qEdGxMH9I7zT+Ku8wznJb+HECyxG6P4FAD5Db3PQoj7uYyDa7zYA8hvucxAHW3g6Lt8d4pg5Nkk9fawXyoPK3R73nFMlYCHq8h++KxsOFr/0Ah6lrEt7S3gAAAABJRU5ErkJggg=='; // malé kuře, první frame
-  chickenFrames[1] = new Image();
-  chickenFrames[1].src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAlklEQVR4nO3XQQrCMAwE0Pf//xW4QKnQhSuE3LhSXhLz2GT9IKI2YFDNti8qEdGxMH9I7zT+Ku8wznJb+HECyxG6P4FAD5Db3PQoj7uYyDa7zYA8hvucxAHW3g6Lt8d4pg5Nkk9fawXyoPK3R73nFMlYCHq8h++KxsOFr/0Ah6lrEt7S3gAAAABJRU5ErkJggg=='; // stejný druhý frame - můžeš vyměnit za něco jiného
+  // Base64 obrázky kuřete
+  const chickenFramesSrc = [
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAlklEQVR4nO3XQQrCMAwE0Pf//xW4QKnQhSuE3LhSXhLz2GT9IKI2YFDNti8qEdGxMH9I7zT+Ku8wznJb+HECyxG6P4FAD5Db3PQoj7uYyDa7zYA8hvucxAHW3g6Lt8d4pg5Nkk9fawXyoPK3R73nFMlYCHq8h++KxsOFr/0Ah6lrEt7S3gAAAABJRU5ErkJggg==',
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAlklEQVR4nO3XQQrCMAwE0Pf//xW4QKnQhSuE3LhSXhLz2GT9IKI2YFDNti8qEdGxMH9I7zT+Ku8wznJb+HECyxG6P4FAD5Db3PQoj7uYyDa7zYA8hvucxAHW3g6Lt8d4pg5Nkk9fawXyoPK3R73nFMlYCHq8h++KxsOFr/0Ah6lrEt7S3gAAAABJRU5ErkJggg=='
+  ];
+
+  let chickenFrames = [];
+  let imagesLoaded = 0;
+
+  // Load all chicken frames
+  function loadImages(sources, callback) {
+    let loaded = 0;
+    let imgs = [];
+    sources.forEach((src, i) => {
+      imgs[i] = new Image();
+      imgs[i].src = src;
+      imgs[i].onload = () => {
+        loaded++;
+        if(loaded === sources.length) callback(imgs);
+      }
+      imgs[i].onerror = () => {
+        alert("Nepodařilo se načíst obrázek kuřete!");
+      }
+    });
+  }
 
   // Trať konfigurace - barvy pozadí a rychlost
   const tracks = [
@@ -127,7 +146,6 @@
   let gameOver = false;
   let animationFrameId = null;
 
-  // Player creation
   function createPlayer() {
     return {
       x: 50,
@@ -144,7 +162,6 @@
     };
   }
 
-  // Create obstacle
   function createObstacle() {
     const height = 50;
     const width = 30;
@@ -152,7 +169,6 @@
     obstacles.push({ x: canvas.width, y, width, height });
   }
 
-  // Jump
   function jump() {
     if (player.grounded && !gameOver) {
       player.vy = player.jumpForce;
@@ -181,14 +197,12 @@
       obs.x -= gameSpeed;
     });
 
-    // Remove obstacles off screen and increase score
     while (obstacles.length && obstacles[0].x + obstacles[0].width < 0) {
       obstacles.shift();
       score++;
       scoreDisplay.textContent = 'Skóre: ' + score;
     }
 
-    // Gravity and movement
     player.vy += player.gravity;
     player.y += player.vy;
     if (player.y > 220) {
@@ -197,7 +211,6 @@
       player.grounded = true;
     }
 
-    // Collision detection
     obstacles.forEach(obs => {
       if (
         player.x < obs.x + obs.width &&
@@ -211,7 +224,6 @@
       }
     });
 
-    // Animate player frames
     player.frameTimer++;
     if (player.frameTimer >= player.frameInterval) {
       player.frame = (player.frame + 1) % chickenFrames.length;
@@ -220,22 +232,18 @@
   }
 
   function draw() {
-    // Clear
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Background according to track
     if(currentTrack) {
       ctx.fillStyle = currentTrack.bgColor;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // Draw obstacles (simple rectangles)
     ctx.fillStyle = '#b22222';
     obstacles.forEach(obs => {
       ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
     });
 
-    // Draw player
     const frameImg = chickenFrames[player.frame];
     ctx.drawImage(frameImg, player.x, player.y, player.width, player.height);
   }
@@ -246,13 +254,11 @@
     if (!gameOver) animationFrameId = requestAnimationFrame(gameLoop);
   }
 
-  // Show game over
   function showGameOver() {
     gameOverText.textContent = `Konec hry! Skóre: ${score}`;
     gameOverScreen.style.display = 'flex';
   }
 
-  // Start game
   function startGame(trackIndex) {
     currentTrack = tracks[trackIndex];
     player = createPlayer();
@@ -272,7 +278,7 @@
     gameLoop();
   }
 
-  // Event listeners for menu buttons
+  // Tlačítka menu
   document.querySelectorAll('.track-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const trackIndex = Number(btn.getAttribute('data-track'));
@@ -289,6 +295,12 @@
     canvas.style.display = 'none';
     scoreDisplay.style.display = 'none';
     menu.style.display = 'block';
+  });
+
+  // Načtení obrázků a spuštění hry až po načtení
+  loadImages(chickenFramesSrc, imgs => {
+    chickenFrames = imgs;
+    // Teď už jsou obrázky načteny a hra může začít (menu je vidět)
   });
 </script>
 
