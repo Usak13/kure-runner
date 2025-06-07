@@ -17,8 +17,6 @@
     margin: 20px auto;
     border-radius: 10px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-    background: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80') no-repeat center bottom;
-    background-size: cover;
   }
   #score {
     font-size: 24px;
@@ -112,27 +110,20 @@
   let gameOver = false;
   let animationFrameId;
 
-  // Kuře obrázek
+  // Obrázky
   const chickenImg = new Image();
   chickenImg.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Chicken_icon.svg/120px-Chicken_icon.svg.png';
 
-  // Pozadí pro tratě (pouze Hory s obrázkem)
-  const trackBackgrounds = [
-    'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80', // Hory (Alpy)
-    '#a0a0a0', // Město - jednobarevné
-    '#2e7d32', // Les
-    '#f4d35e', // Poušť
-    '#4a4a4a', // Jeskyně
-    '#00bcd4', // Pláž
-  ];
+  const mountainBgImg = new Image();
+  mountainBgImg.src = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80';
 
   const tracks = [
-    { name: 'Hory', bgColor: null, speedStart: 5 },
-    { name: 'Město', bgColor: '#a0a0a0', speedStart: 6 },
-    { name: 'Les', bgColor: '#2e7d32', speedStart: 4 },
-    { name: 'Poušť', bgColor: '#f4d35e', speedStart: 5.5 },
-    { name: 'Jeskyně', bgColor: '#4a4a4a', speedStart: 4.5 },
-    { name: 'Pláž', bgColor: '#00bcd4', speedStart: 5.2 },
+    { name: 'Hory', bgImage: mountainBgImg, speedStart: 5 },
+    { name: 'Město', bgImage: null, bgColor: '#a0a0a0', speedStart: 6 },
+    { name: 'Les', bgImage: null, bgColor: '#2e7d32', speedStart: 4 },
+    { name: 'Poušť', bgImage: null, bgColor: '#f4d35e', speedStart: 5.5 },
+    { name: 'Jeskyně', bgImage: null, bgColor: '#4a4a4a', speedStart: 4.5 },
+    { name: 'Pláž', bgImage: null, bgColor: '#00bcd4', speedStart: 5.2 },
   ];
 
   function createPlayer() {
@@ -214,33 +205,31 @@
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Pozadí - pokud hory, použij obrázek, jinak jednobarevné
+    // Pozadí
     if (currentTrack) {
-      if(currentTrack.bgColor === null){
-        // obrázek pozadí
-        let bg = new Image();
-        bg.src = trackBackgrounds[0];
-        ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
-      } else {
+      if (currentTrack.bgImage && currentTrack.bgImage.complete) {
+        ctx.drawImage(currentTrack.bgImage, 0, 0, canvas.width, canvas.height);
+      } else if (currentTrack.bgColor) {
         ctx.fillStyle = currentTrack.bgColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      } else {
+        ctx.fillStyle = '#87ceeb';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
     }
 
-    // Překážky - červené obdélníky
+    // Překážky
     ctx.fillStyle = '#b22222';
     obstacles.forEach(obs => {
       ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
     });
 
-    // Kuře - obrázek, pokud nahrán, jinak žlutý obdélník
-    if(chickenImg.complete){
+    // Kuře
+    if (chickenImg.complete) {
       ctx.drawImage(chickenImg, player.x, player.y, player.width, player.height);
     } else {
       ctx.fillStyle = 'yellow';
       ctx.fillRect(player.x, player.y, player.width, player.height);
-      ctx.fillStyle = 'red';
-      ctx.fillRect(player.x + player.width - 15, player.y, 10, 15);
     }
   }
 
@@ -271,7 +260,16 @@
     canvas.style.display = 'block';
     scoreDisplay.style.display = 'block';
 
-    gameLoop();
+    // Počkej, až se kuře i pozadí načtou, pak spustíme hru
+    Promise.all([
+      new Promise(res => { chickenImg.complete ? res() : chickenImg.onload = res; }),
+      new Promise(res => {
+        if (!currentTrack.bgImage) return res();
+        currentTrack.bgImage.complete ? res() : currentTrack.bgImage.onload = res;
+      }),
+    ]).then(() => {
+      gameLoop();
+    });
   }
 
   document.querySelectorAll('.track-btn').forEach(btn => {
@@ -282,7 +280,7 @@
   });
 
   restartBtn.addEventListener('click', () => {
-    if(currentTrack !== null) startGame(tracks.indexOf(currentTrack));
+    if (currentTrack !== null) startGame(tracks.indexOf(currentTrack));
   });
 
   menuBtn.addEventListener('click', () => {
@@ -291,7 +289,6 @@
     scoreDisplay.style.display = 'none';
     menu.style.display = 'block';
   });
-
 </script>
 
 </body>
