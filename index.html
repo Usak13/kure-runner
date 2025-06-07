@@ -1,7 +1,8 @@
+<!DOCTYPE html>
 <html lang="cs">
 <head>
   <meta charset="UTF-8" />
-  <title>Skákací kuře s efekty a pozadím</title>
+  <title>Skákací kuře animace + efekty</title>
   <style>
     body {
       margin: 0;
@@ -41,21 +42,20 @@
     { img: new Image(), x: 0, speed: 0.5 }, // hory
     { img: new Image(), x: 0, speed: 1 },   // tráva/podlaha
   ];
-  // Zdrojové obrázky - nahráno na imgur, můžeš změnit na své
   backgroundLayers[0].img.src = 'https://i.imgur.com/2dzXhKw.png'; // mraky
   backgroundLayers[1].img.src = 'https://i.imgur.com/R3FDe9F.png'; // hory
   backgroundLayers[2].img.src = 'https://i.imgur.com/HLz0vpp.png'; // tráva
 
-  // --- KUŘE (sprite sheet 4 snímky chůze 64x64) ---
+  // --- KUŘE (sprite sheet 4 snímky, 64x64) ---
   const chickenSprite = new Image();
-  chickenSprite.src = 'https://i.imgur.com/CSvEFAz.png';
+  chickenSprite.src = 'https://i.imgur.com/CSvEFAz.png'; // Kuře 4 snímky chůze
 
   // --- ZVUKY ---
   const jumpSound = new Audio('https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg');
   const landSound = new Audio('https://actions.google.com/sounds/v1/impacts/wood_thud.ogg');
   const scoreSound = new Audio('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg');
 
-  // --- HRÁČ (kuře) ---
+  // --- HRÁČ ---
   const player = {
     x: 50,
     y: 220,
@@ -72,9 +72,7 @@
   };
 
   // --- PŘEKÁŽKY ---
-  // Typy překážek: lava, voda, kamen
   const obstacleTypes = ['lava', 'voda', 'kamen'];
-
   const obstacles = [];
   const obstacleWidth = 30;
   let gameSpeed = 5;
@@ -82,7 +80,7 @@
   let score = 0;
   let gameOver = false;
 
-  // --- ČÁSTICE PRAHU při přistání/skoku ---
+  // --- ČÁSTICE PRAHU ---
   class Particle {
     constructor(x, y, color) {
       this.x = x;
@@ -98,7 +96,7 @@
       this.x += this.vx;
       this.y += this.vy;
       this.alpha -= this.decay;
-      this.vy += 0.1; // gravity effect on particles
+      this.vy += 0.1;
     }
     draw(ctx) {
       ctx.save();
@@ -150,22 +148,20 @@
       if (gameSpeed < 12) gameSpeed += 0.2;
     }
 
-    // Pohyb překážek + animace u některých typů
+    // Pohyb a animace překážek
     obstacles.forEach(obs => {
       obs.x -= gameSpeed;
 
       if(obs.type === 'lava') {
-        // Blikání lávy
         obs.frame += 0.2;
         if(obs.frame > 3) obs.frame = 0;
       }
       if(obs.type === 'voda') {
-        // Vlna u vody posouvá výšku překážky lehce nahoru/dolů
         obs.y = 220 + Math.sin(frameCounter * 0.1 + obs.x * 0.05) * 5;
       }
     });
 
-    // Odstranění překážek mimo obrazovku a zvýšení skóre
+    // Odstranění překážek a skóre
     while (obstacles.length && obstacles[0].x + obstacleWidth < 0) {
       obstacles.shift();
       score++;
@@ -188,7 +184,7 @@
       player.grounded = true;
     }
 
-    // Kolize s překážkami
+    // Kolize
     obstacles.forEach(obs => {
       if (
         player.x < obs.x + obs.width &&
@@ -230,12 +226,10 @@
   function drawObstacles() {
     obstacles.forEach(obs => {
       if(obs.type === 'lava') {
-        // Láva - blikající červená s oranžovými "blesky"
         const flicker = Math.floor(obs.frame) % 4;
         const colors = ['#d44', '#ff4500', '#b22222', '#ff6347'];
         ctx.fillStyle = colors[flicker];
         ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-        // Přidat malé „blesky“
         ctx.fillStyle = '#ffa500';
         for(let i=0; i<5; i++) {
           let bx = obs.x + Math.random()*obs.width;
@@ -243,5 +237,55 @@
           ctx.fillRect(bx, by, 2, 2);
         }
       } else if(obs.type === 'voda') {
-        // Voda - modrá s lehkými vlnkami
-        ctx
+        ctx.fillStyle = '#3399ff';
+        ctx.beginPath();
+        ctx.ellipse(obs.x + obs.width/2, obs.y + obs.height/2, obs.width/2, obs.height/2 + 5 * Math.sin(frameCounter * 0.1), 0, 0, Math.PI*2);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = '#777';
+        ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+      }
+    });
+  }
+
+  function drawParticles() {
+    particles.forEach(p => p.draw(ctx));
+  }
+
+  function drawPlayer() {
+    // Animovaný sprite - 4 snímky vedle sebe, každý 64x64 px
+    ctx.drawImage(
+      chickenSprite,
+      player.frame * player.width, 0, player.width, player.height,
+      player.x, player.y, player.width, player.height
+    );
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBackground();
+    drawObstacles();
+    drawParticles();
+    drawPlayer();
+  }
+
+  function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+  }
+
+  // Po načtení obrázků začneme hru
+  let loadedImages = 0;
+  const totalImages = backgroundLayers.length + 1; // pozadí + kuře
+  backgroundLayers.forEach(layer => layer.img.onload = () => {
+    loadedImages++;
+    if (loadedImages === totalImages) gameLoop();
+  });
+  chickenSprite.onload = () => {
+    loadedImages++;
+    if (loadedImages === totalImages) gameLoop();
+  };
+</script>
+</body>
+</html>
