@@ -72,6 +72,10 @@ const player = {
 };
 player.img.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Chicken_icon.svg/120px-Chicken_icon.svg.png';
 
+// Obrázek překážky
+const obstacleImg = new Image();
+obstacleImg.src = 'https://cdn.pixabay.com/photo/2012/04/14/16/00/rock-34400_1280.png';
+
 // Pozadí obrázky
 const bgMountain = new Image();
 bgMountain.src = 'https://cdn.pixabay.com/photo/2016/04/01/11/58/mountains-1305366_1280.png';
@@ -201,13 +205,17 @@ function draw() {
   ctx.fillStyle = '#3B7A57'; 
   ctx.fillRect(0, 300, canvas.width, 50);
 
-  // Překážky
-  ctx.fillStyle = '#8B4513';
+  // Překážky s obrázky
   for(let obs of obstacles){
-    ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+    if(obstacleImg.complete){
+      ctx.drawImage(obstacleImg, obs.x, obs.y - 10, obs.width + 20, obs.height + 20);
+    } else {
+      ctx.fillStyle = '#8B4513';
+      ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+    }
   }
 
-  // Kuře
+  // Kuře hráč
   if(player.img.complete){
     ctx.drawImage(player.img, player.x, player.y, player.width, player.height);
   } else {
