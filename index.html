@@ -2,7 +2,7 @@
 <html lang="cs">
 <head>
 <meta charset="UTF-8" />
-<title>Skákací kuře - více tratí</title>
+<title>Skákací kuře - s funkčním menu</title>
 <style>
   body {
     margin: 0;
@@ -101,37 +101,33 @@
   const restartBtn = document.getElementById('restartBtn');
   const menuBtn = document.getElementById('menuBtn');
 
-  // Trať konfigurace - každá má jiné pozadí a rychlost
+  // Base64 obrázky (velmi jednoduchý kuře sprite 2 snímky)
+  const chickenFrames = [];
+  chickenFrames[0] = new Image();
+  chickenFrames[0].src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAlklEQVR4nO3XQQrCMAwE0Pf//xW4QKnQhSuE3LhSXhLz2GT9IKI2YFDNti8qEdGxMH9I7zT+Ku8wznJb+HECyxG6P4FAD5Db3PQoj7uYyDa7zYA8hvucxAHW3g6Lt8d4pg5Nkk9fawXyoPK3R73nFMlYCHq8h++KxsOFr/0Ah6lrEt7S3gAAAABJRU5ErkJggg=='; // malé kuře, první frame
+  chickenFrames[1] = new Image();
+  chickenFrames[1].src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAlklEQVR4nO3XQQrCMAwE0Pf//xW4QKnQhSuE3LhSXhLz2GT9IKI2YFDNti8qEdGxMH9I7zT+Ku8wznJb+HECyxG6P4FAD5Db3PQoj7uYyDa7zYA8hvucxAHW3g6Lt8d4pg5Nkk9fawXyoPK3R73nFMlYCHq8h++KxsOFr/0Ah6lrEt7S3gAAAABJRU5ErkJggg=='; // stejný druhý frame - můžeš vyměnit za něco jiného
+
+  // Trať konfigurace - barvy pozadí a rychlost
   const tracks = [
-    { name: 'Hory', bgImages: ['https://i.imgur.com/2dzXhKw.png', 'https://i.imgur.com/R3FDe9F.png', 'https://i.imgur.com/HLz0vpp.png'], speedStart: 5 },
-    { name: 'Město', bgImages: ['https://i.imgur.com/2ghsO0A.png', 'https://i.imgur.com/n2MKd41.png', 'https://i.imgur.com/jY2bqNK.png'], speedStart: 6 },
-    { name: 'Les', bgImages: ['https://i.imgur.com/RNm2GjW.png', 'https://i.imgur.com/d41AXm3.png', 'https://i.imgur.com/xt7lpUi.png'], speedStart: 4 },
-    { name: 'Poušť', bgImages: ['https://i.imgur.com/H92nQzL.png', 'https://i.imgur.com/jx6puvJ.png', 'https://i.imgur.com/cGzDZ2f.png'], speedStart: 5.5 },
-    { name: 'Jeskyně', bgImages: ['https://i.imgur.com/UwR6Skg.png', 'https://i.imgur.com/9lXMFUj.png', 'https://i.imgur.com/mg38lpu.png'], speedStart: 4.5 },
-    { name: 'Pláž', bgImages: ['https://i.imgur.com/5tNmyvX.png', 'https://i.imgur.com/YHrcD3V.png', 'https://i.imgur.com/0z2j33N.png'], speedStart: 5.2 },
+    { name: 'Hory', bgColor: '#7ec850', speedStart: 5 },
+    { name: 'Město', bgColor: '#a0a0a0', speedStart: 6 },
+    { name: 'Les', bgColor: '#2e7d32', speedStart: 4 },
+    { name: 'Poušť', bgColor: '#f4d35e', speedStart: 5.5 },
+    { name: 'Jeskyně', bgColor: '#4a4a4a', speedStart: 4.5 },
+    { name: 'Pláž', bgColor: '#00bcd4', speedStart: 5.2 },
   ];
 
-  // --- Global variables ---
   let currentTrack = null;
-  let backgroundLayers = [];
   let player;
   let obstacles = [];
-  let particles = [];
-  let gameSpeed = 5;
   let frameCounter = 0;
   let score = 0;
+  let gameSpeed = 5;
   let gameOver = false;
+  let animationFrameId = null;
 
-  // --- Images ---
-  const chickenSprite = new Image();
-  chickenSprite.src = 'https://i.imgur.com/CSvEFAz.png';
-
-  // Sounds
-  const jumpSound = new Audio('https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg');
-  const landSound = new Audio('https://actions.google.com/sounds/v1/impacts/wood_thud.ogg');
-  const scoreSound = new Audio('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg');
-
-  // Player object
+  // Player creation
   function createPlayer() {
     return {
       x: 50,
@@ -141,86 +137,29 @@
       vy: 0,
       gravity: 0.8,
       jumpForce: -15,
-      grounded: false,
+      grounded: true,
       frame: 0,
-      frameCount: 4,
       frameTimer: 0,
-      frameInterval: 10
+      frameInterval: 15,
     };
   }
 
-  // Particle class
-  class Particle {
-    constructor(x, y, color) {
-      this.x = x;
-      this.y = y;
-      this.radius = Math.random() * 3 + 2;
-      this.color = color;
-      this.vx = (Math.random() - 0.5) * 3;
-      this.vy = Math.random() * -3 - 1;
-      this.alpha = 1;
-      this.decay = 0.02;
-    }
-    update() {
-      this.x += this.vx;
-      this.y += this.vy;
-      this.alpha -= this.decay;
-      this.vy += 0.1;
-    }
-    draw(ctx) {
-      ctx.save();
-      ctx.globalAlpha = this.alpha;
-      ctx.fillStyle = this.color;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-  }
-
-  // Create background layers for chosen track
-  function createBackgroundLayers(track) {
-    return track.bgImages.map(imgSrc => {
-      const img = new Image();
-      img.src = imgSrc;
-      return { img, x: 0, speed: 0 };
-    });
-  }
-
-  // Set parallax speeds for backgrounds
-  function setParallaxSpeeds() {
-    if (backgroundLayers.length < 3) return;
-    backgroundLayers[0].speed = 0.2;
-    backgroundLayers[1].speed = 0.5;
-    backgroundLayers[2].speed = 1;
-  }
-
-  // Create an obstacle with random type
+  // Create obstacle
   function createObstacle() {
-    const obstacleTypes = ['lava', 'voda', 'kamen'];
-    const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+    const height = 50;
+    const width = 30;
     const y = 220;
-    obstacles.push({ x: canvas.width, y, width: 30, height: 50, type, frame: 0 });
+    obstacles.push({ x: canvas.width, y, width, height });
   }
 
-  // Spawn particles helper
-  function spawnParticles(x, y, color) {
-    for (let i = 0; i < 10; i++) {
-      particles.push(new Particle(x, y, color));
-    }
-  }
-
-  // Jump function
+  // Jump
   function jump() {
     if (player.grounded && !gameOver) {
       player.vy = player.jumpForce;
       player.grounded = false;
-      jumpSound.play();
-      spawnParticles(player.x + player.width / 2, player.y + player.height, '#fff8dc');
     }
   }
 
-  // Event listeners
   document.addEventListener('keydown', e => {
     if ((e.code === 'Space' || e.code === 'ArrowUp') && !gameOver) jump();
   });
@@ -228,47 +167,31 @@
     if (!gameOver) jump();
   });
 
-  // Update game state
   function update() {
     if (gameOver) return;
 
     frameCounter++;
+
     if (frameCounter % 90 === 0) {
       createObstacle();
       if (gameSpeed < 12) gameSpeed += 0.2;
     }
 
-    // Move and animate obstacles
     obstacles.forEach(obs => {
       obs.x -= gameSpeed;
-
-      if (obs.type === 'lava') {
-        obs.frame += 0.2;
-        if (obs.frame > 3) obs.frame = 0;
-      }
-      if (obs.type === 'voda') {
-        obs.y = 220 + Math.sin(frameCounter * 0.1 + obs.x * 0.05) * 5;
-      }
     });
 
-    // Remove obstacles off screen and update score
-    while (obstacles.length && obstacles[0].x + 30 < 0) {
+    // Remove obstacles off screen and increase score
+    while (obstacles.length && obstacles[0].x + obstacles[0].width < 0) {
       obstacles.shift();
       score++;
-      scoreSound.play();
       scoreDisplay.textContent = 'Skóre: ' + score;
     }
 
-    // Player gravity and position
+    // Gravity and movement
     player.vy += player.gravity;
     player.y += player.vy;
-
-    // Floor and landing
     if (player.y > 220) {
-      if (!player.grounded) {
-        landSound.play();
-        spawnParticles(player.x + player.width / 2, player.y + player.height, '#deb887');
-      }
       player.y = 220;
       player.vy = 0;
       player.grounded = true;
@@ -283,141 +206,84 @@
         player.y + player.height > obs.y
       ) {
         gameOver = true;
+        cancelAnimationFrame(animationFrameId);
         showGameOver();
       }
     });
 
-    // Animate player walk cycle
+    // Animate player frames
     player.frameTimer++;
     if (player.frameTimer >= player.frameInterval) {
-      player.frame = (player.frame + 1) % player.frameCount;
+      player.frame = (player.frame + 1) % chickenFrames.length;
       player.frameTimer = 0;
     }
-
-    // Update particles
-    for (let i = particles.length - 1; i >= 0; i--) {
-      particles[i].update();
-      if (particles[i].alpha <= 0) particles.splice(i, 1);
-    }
   }
 
-  // Draw background with parallax
-  function drawBackground() {
-    backgroundLayers.forEach(layer => {
-      layer.x -= layer.speed * gameSpeed;
-      if (layer.x <= -canvas.width) layer.x = 0;
-
-      ctx.drawImage(layer.img, layer.x, 0, canvas.width, canvas.height);
-      ctx.drawImage(layer.img, layer.x + canvas.width, 0, canvas.width, canvas.height);
-    });
-  }
-
-  // Draw obstacles
-  function drawObstacles() {
-    obstacles.forEach(obs => {
-      if (obs.type === 'lava') {
-        const flicker = Math.floor(obs.frame) % 4;
-        const colors = ['#d44', '#ff4500', '#b22222', '#ff6347'];
-        ctx.fillStyle = colors[flicker];
-        ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-        ctx.fillStyle = '#ffa500';
-        for (let i = 0; i < 5; i++) {
-          let bx = obs.x + Math.random() * obs.width;
-          let by = obs.y + Math.random() * obs.height;
-          ctx.fillRect(bx, by, 2, 2);
-        }
-      } else if (obs.type === 'voda') {
-        ctx.fillStyle = '#3399ff';
-        ctx.beginPath();
-        ctx.ellipse(obs.x + obs.width / 2, obs.y + obs.height / 2, obs.width / 2, obs.height / 2 + 5 * Math.sin(frameCounter * 0.1), 0, 0, Math.PI * 2);
-        ctx.fill();
-      } else {
-        ctx.fillStyle = '#777';
-        ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-      }
-    });
-  }
-
-  // Draw particles
-  function drawParticles() {
-    particles.forEach(p => p.draw(ctx));
-  }
-
-  // Draw player with sprite animation
-  function drawPlayer() {
-    ctx.drawImage(
-      chickenSprite,
-      player.frame * player.width, 0, player.width, player.height,
-      player.x, player.y, player.width, player.height
-    );
-  }
-
-  // Draw everything
   function draw() {
+    // Clear
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawBackground();
-    drawObstacles();
-    drawParticles();
-    drawPlayer();
+
+    // Background according to track
+    if(currentTrack) {
+      ctx.fillStyle = currentTrack.bgColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Draw obstacles (simple rectangles)
+    ctx.fillStyle = '#b22222';
+    obstacles.forEach(obs => {
+      ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+    });
+
+    // Draw player
+    const frameImg = chickenFrames[player.frame];
+    ctx.drawImage(frameImg, player.x, player.y, player.width, player.height);
   }
 
-  // Game loop
   function gameLoop() {
     update();
     draw();
-    if (!gameOver) requestAnimationFrame(gameLoop);
+    if (!gameOver) animationFrameId = requestAnimationFrame(gameLoop);
   }
 
-  // Show game over screen
+  // Show game over
   function showGameOver() {
     gameOverText.textContent = `Konec hry! Skóre: ${score}`;
     gameOverScreen.style.display = 'flex';
   }
 
-  // Reset game variables and start playing
+  // Start game
   function startGame(trackIndex) {
     currentTrack = tracks[trackIndex];
-    gameSpeed = currentTrack.speedStart;
-    score = 0;
-    frameCounter = 0;
-    gameOver = false;
-    obstacles = [];
-    particles = [];
     player = createPlayer();
+    obstacles = [];
+    frameCounter = 0;
+    score = 0;
+    gameSpeed = currentTrack.speedStart;
+    gameOver = false;
 
-    // Load background images
-    backgroundLayers = createBackgroundLayers(currentTrack);
-    setParallaxSpeeds();
+    scoreDisplay.textContent = 'Skóre: 0';
 
-    // Show canvas and score, hide menu and game over
     menu.style.display = 'none';
     gameOverScreen.style.display = 'none';
     canvas.style.display = 'block';
     scoreDisplay.style.display = 'block';
-    scoreDisplay.textContent = 'Skóre: 0';
 
-    // Wait for images to load before starting loop
-    let loadedImages = 0;
-    const totalImages = backgroundLayers.length + 1;
-    backgroundLayers.forEach(layer => layer.img.onload = () => {
-      loadedImages++;
-      if (loadedImages === totalImages) gameLoop();
-    });
-    chickenSprite.onload = () => {
-      loadedImages++;
-      if (loadedImages === totalImages) gameLoop();
-    };
+    gameLoop();
   }
 
-  // Buttons event
+  // Event listeners for menu buttons
   document.querySelectorAll('.track-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      startGame(parseInt(btn.dataset.track));
+      const trackIndex = Number(btn.getAttribute('data-track'));
+      startGame(trackIndex);
     });
   });
+
   restartBtn.addEventListener('click', () => {
     if(currentTrack !== null) startGame(tracks.indexOf(currentTrack));
   });
+
   menuBtn.addEventListener('click', () => {
     gameOverScreen.style.display = 'none';
     canvas.style.display = 'none';
